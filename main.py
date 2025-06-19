@@ -1,14 +1,15 @@
 # coding:utf-8
 import sys
+
 from PyQt5.QtCore import Qt, QEvent, QSize, QEventLoop, QTimer
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtWidgets import QApplication, QStackedWidget, QHBoxLayout, QLabel, QWidget, QVBoxLayout
 
 from qfluentwidgets import (NavigationInterface, NavigationItemPosition, NavigationWidget, MessageBox,
                             isDarkTheme, setTheme, Theme, setThemeColor, NavigationToolButton, NavigationPanel)
 from qfluentwidgets import FluentIcon as FIF
 from qframelesswindow import FramelessWindow, StandardTitleBar
-from qfluentwidgets import Pivot, setTheme, Theme, SplashScreen
+from qfluentwidgets import Pivot, setTheme, Theme, SplashScreen, SegmentedToggleToolWidget
 
 from page import CreatePage
 
@@ -51,14 +52,14 @@ class Window(FramelessWindow):
         # self.navigationInterface = NavigationBar(self)
         self.stackWidget = QStackedWidget(self)
 
-        self.pivot = Pivot(self)
+        self.pivot = SegmentedToggleToolWidget(self)
 
         self.CreateInterface = CreatePage()
         self.FindInterface = Widget('Find', self)
 
         # create sub interface
-        self.addSubInterface(self.CreateInterface, 'create', '创建')
-        self.addSubInterface(self.FindInterface, 'find', '查询')
+        self.addSubInterface(self.CreateInterface, 'create', FIF.ADD)
+        self.addSubInterface(self.FindInterface, 'find', FIF.SEARCH)
 
         # initialize layout
         self.initLayout()
@@ -77,11 +78,11 @@ class Window(FramelessWindow):
         self.vBoxLayout.addWidget(self.stackWidget)
         self.vBoxLayout.setStretchFactor(self.stackWidget, 1)
 
-    def addSubInterface(self, widget: QWidget, objectName, text):
+    def addSubInterface(self, widget: QWidget, objectName, icon):
         widget.setObjectName(objectName)
         # widget.setAlignment(Qt.AlignCenter)
         self.stackWidget.addWidget(widget)
-        self.pivot.addItem(routeKey = objectName, text = text)
+        self.pivot.addItem(routeKey = objectName, icon=icon)
 
     def initWindow(self):
         self.titleBar.setAttribute(Qt.WA_StyledBackground)
@@ -90,11 +91,10 @@ class Window(FramelessWindow):
         w, h = desktop.width(), desktop.height()
         self.move(w // 2 - self.width() // 2, h // 2 - self.height() // 2)
 
-        self.setQss()
         self.pivot.setCurrentItem(self.CreateInterface.objectName())
         self.pivot.currentItemChanged.connect(
             lambda k: self.stackWidget.setCurrentWidget(self.findChild(QWidget, k)))
-
+        self.setQss()
         # 给启动页面时间
         loop = QEventLoop(self)
         QTimer.singleShot(3000, loop.quit)
