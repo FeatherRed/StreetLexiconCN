@@ -13,3 +13,7 @@ Window {
 NavigationBar > QLabel {
     font: 18px 'Segoe UI', 'Microsoft YaHei';
 }
+
+QLabel {
+    font: 18px 'Segoe UI', 'Microsoft YaHei';
+}

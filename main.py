@@ -11,7 +11,7 @@ from qfluentwidgets import FluentIcon as FIF
 from qframelesswindow import FramelessWindow, StandardTitleBar
 from qfluentwidgets import Pivot, setTheme, Theme, SplashScreen, SegmentedToggleToolWidget
 
-from page import CreatePage
+from page import CreatePage, SearchPage
 
 
 class Widget(QWidget):
@@ -34,7 +34,7 @@ class Window(FramelessWindow):
         self.setTitleBar(StandardTitleBar(self))
         self.resize(500, 500)
         self.setWindowIcon(QIcon('resource/logo.png'))
-        self.setWindowTitle('地图地址路名库生成器')
+        self.setWindowTitle('城市地址路名库生成器')
 
         # 创建启动页面
         self.splashScreen = SplashScreen(self.windowIcon(), self)
@@ -55,7 +55,7 @@ class Window(FramelessWindow):
         self.pivot = SegmentedToggleToolWidget(self)
 
         self.CreateInterface = CreatePage()
-        self.FindInterface = Widget('Find', self)
+        self.FindInterface = SearchPage()
 
         # create sub interface
         self.addSubInterface(self.CreateInterface, 'create', FIF.ADD)
@@ -104,13 +104,6 @@ class Window(FramelessWindow):
         color = 'dark' if isDarkTheme() else 'light'
         with open(f'resource/{color}/demo.qss', encoding = 'utf-8') as f:
             self.setStyleSheet(f.read())
-
-    def switchTo(self, widget):
-        self.stackWidget.setCurrentWidget(widget)
-
-    def onCurrentInterfaceChanged(self, index):
-        widget = self.stackWidget.widget(index)
-        self.navigationInterface.setCurrentItem(widget.objectName())
 
 
 if __name__ == '__main__':
