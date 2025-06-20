@@ -2,12 +2,15 @@ import sys
 from PyQt5.QtWidgets import (
     QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QButtonGroup, QFileDialog, QTableWidgetItem, QHeaderView
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QObject, pyqtSignal
 from qfluentwidgets import (PrimaryPushButton, InfoBar, InfoBarPosition, LineEdit, CheckBox, PushButton, ToolButton, SearchLineEdit,
                             RadioButton, InfoBarIcon, TableWidget, ToolTipPosition, ToolTipFilter, IndeterminateProgressBar, ComboBox)
 from qfluentwidgets import FluentIcon as FIT
 from pyqt5_concurrent.TaskExecutor import TaskExecutor
 from query import query_city, query_road, query_street, query_district
+
+import platform
+
 import json
 class SearchPage(QWidget):
     def __init__(self):
@@ -15,6 +18,7 @@ class SearchPage(QWidget):
         self.setObjectName("search")  # 设置 objectName 以便 Pivot 能识别
 
         self.json_path = ""  # 保存选择的json文件路径
+        self.is_amd = "AMD" in platform.processor()  # 检测是否为 AMD 处理器
         self.init_ui()
 
     def init_ui(self):
@@ -78,7 +82,10 @@ class SearchPage(QWidget):
         second_layout.addWidget(self.input_edit)
         self.layout.addLayout(second_layout)
 
-
+        self.emitter = SearchEmitter() if self.is_amd else None  # 用于线程通信的信号发射器
+        if self.emitter:
+            # 连接信号到槽函数
+            self.emitter.log.connect(self.updatetable)
         # --- 查询按钮 ---
         # self.query_btn = PrimaryPushButton("查询")
         # self.query_btn.clicked.connect(self.query_action)
@@ -158,8 +165,7 @@ class SearchPage(QWidget):
             # 取消其他所有 checkbox 的选中状态
             for box in self.check_boxes:
                 if box is not clicked_box:
-                    box.setChecked(False)
-            
+                    box.setChecked(False)      
         else:
             # 如果点击的是自己且已选中，则取消自己，不做别的处理
             pass
@@ -190,8 +196,14 @@ class SearchPage(QWidget):
         province_name = self.province  # 使用之前保存的省份名称
         # 显示进度条
         self.inProgress.start()
-        future = TaskExecutor.run(self.fors, flag, query_text, self.data, city_name, province_name)  # 使用 TaskExecutor 来运行耗时任务
-        future.finished.connect(lambda e: self.updatetable(e.getExtra('result'), query_text))  # 更新表格数据
+        future = TaskExecutor.run(self.search, flag, query_text, self.data, city_name, province_name, self.emitter)  # 使用 TaskExecutor 来运行耗时任务
+        if not self.is_amd:
+            # 如果是 CPU 处理器，直接获取结果
+            if query_text == "":
+                query_text = city_name
+            future.finished.connect(lambda: self.updatetable(future.getExtra('result'), query_text))
+        # 修改一下query_text   
+        # future.finished.connect(lambda e: self.updatetable(e.getExtra('result'), query_text))  # 更新表格数据
 
     def updatetable(self, data, query_text):
         """
@@ -218,19 +230,23 @@ class SearchPage(QWidget):
 
         self.inProgress.stop()
 
-    def fors(self, flag, text, data, city, province):
+    def search(self, flag, text, data, city, province, emitter = None):
         # 模拟一个耗时任务
 
-
         if flag == -1:
-            return query_city(city, province, data[city])
+            a =  query_city(city, province, data[city])
         elif flag == 0:
-            return query_district(text, city, province, data[city])
+            a = query_district(text, city, province, data[city])
         elif flag == 1:
-            return query_street(text, city, province, data[city])
+            a = query_street(text, city, province, data[city])
         elif flag == 2:
-            return query_road(text, city, province, data[city])
-    
+            a = query_road(text, city, province, data[city])
+        if text == "":
+            text = city
+        if emitter:
+            emitter.log.emit(a, text)
+        return a
+
     def createInfoBar(self, num, query_text):
         if num > 0:
             InfoBar.success(
@@ -252,3 +268,6 @@ class SearchPage(QWidget):
                 duration=2000,
                 parent=self,
             )
+
+class SearchEmitter(QObject):
+    log = pyqtSignal(object, str)

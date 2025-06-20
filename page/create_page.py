@@ -13,6 +13,8 @@ import time
 
 from create_database import create_database  # 假设 create_database.py 在同一目录下
 
+import platform
+
 class CreatePage(QWidget):
     def __init__(self):
         super().__init__()
@@ -23,7 +25,7 @@ class CreatePage(QWidget):
             data = json.load(f)
         self.provinces_data = data["name"]
         self.city_id = data["id"]
-
+        self.is_amd = "AMD" in platform.processor()  # 检测是否为 AMD 处理器
         self.init_ui()
         
     def init_ui(self):
@@ -81,6 +83,10 @@ class CreatePage(QWidget):
         self.emitter = GuiSignalEmitter() # 专门用来线程通信的
         self.emitter.log.connect(self.updateTextBrowser)
 
+        self.save_emitter = savejsonEmitter() if self.is_amd else None  # 用于保存数据的信号发射器
+        if self.save_emitter:
+            self.save_emitter.log.connect(self.save_json)
+
         self.layout.addWidget(self.textBrowser)
 
         # --- 状态显示 ---
@@ -118,14 +124,20 @@ class CreatePage(QWidget):
         self.textBrowser.setMarkdown(f"## 正在生成 {city} 地址路名数据\n")
 
         # 模拟生成过程
-        future = TaskExecutor.run(lambda : self.fors(id, city, province,self.emitter))  # 使用 TaskExecutor 来运行耗时任务
-        future.finished.connect(lambda: self.save_json(future.getExtra('result'), province, city))
+        future = TaskExecutor.run(lambda : self.fors(id, city, province,self.emitter, self.save_emitter))
+        if not self.is_amd:
+            # CPU
+            future.finished.connect(lambda: self.save_json(future.getExtra('result'), province, city))
         # future.finished.connect(lambda e: self.createInfoBar(city, str(e)))
         # future.failed.connect(lambda e: self.createErrorInfoBar(city, str(e)))
 
 
-    def fors(self, id, city, province, emitter):
+    def fors(self, id, city, province, emitter, save_emitter = None):
         result = create_database(id, city, province, emitter)
+
+        if save_emitter:
+            save_emitter.log.emit(result, province, city)  # 发送保存数据的信号
+
         return result
 
     def save_json(self, result, province, city):
@@ -207,3 +219,6 @@ class CreatePage(QWidget):
 
 class GuiSignalEmitter(QObject):
     log = pyqtSignal(str)
+
+class savejsonEmitter(QObject):
+    log = pyqtSignal(object, str, str)
