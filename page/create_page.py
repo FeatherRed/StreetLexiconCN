@@ -11,7 +11,7 @@ from qfluentwidgets import ComboBox, PrimaryPushButton, IndeterminateProgressBar
 from pyqt5_concurrent.TaskExecutor import TaskExecutor
 import time
 
-from create_database import create as create_database  # 假设 create_database.py 在同一目录下
+from create_database import create_database  # 假设 create_database.py 在同一目录下
 
 class CreatePage(QWidget):
     def __init__(self):
@@ -118,14 +118,14 @@ class CreatePage(QWidget):
         self.textBrowser.setMarkdown(f"## 正在生成 {city} 地址路名数据\n")
 
         # 模拟生成过程
-        future = TaskExecutor.run(lambda : self.fors(id, city, self.emitter))  # 使用 TaskExecutor 来运行耗时任务
+        future = TaskExecutor.run(lambda : self.fors(id, city, province, self.emitter))  # 使用 TaskExecutor 来运行耗时任务
         future.finished.connect(lambda: self.save_json(future.getExtra('result'), city))
         # future.finished.connect(lambda e: self.createInfoBar(city, str(e)))
         # future.failed.connect(lambda e: self.createErrorInfoBar(city, str(e)))
 
 
-    def fors(self, id, city, emitter):
-        result = create_database(id, city, emitter)
+    def fors(self, id, city, province, emitter):
+        result = create_database(id, city, province, emitter)
         return result
 
     def save_json(self, result, city):

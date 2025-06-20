@@ -93,7 +93,59 @@ def split_data_district(data, id_in_city):
 
     return next_level_name, next_level_id, id_in_level
 
-def create_database(city_id, city_name, emitter):
+def create_database(city_id, city_name, province_name, emitter):
+    if province_name == "台湾省":
+        json_data = {}
+        try:
+            url = "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+            query = gen_district_query(city_id)
+            response = requests.get(url, params={'data': query})
+            data = response.json()
+            streets, roads, id_to_name, id_in_city = split_data_city(data)
+            street_id_list = []
+            street_name_list = []
+            for street in streets:
+                street_id_list.append(street[1])
+                street_name_list.append(street[0])
+            session = FuturesSession(max_workers=16)
+            all_futures = []
+            street_query = gen_road_query(street_id_list)
+            future = session.get(url, params={'data': street_query})
+            all_futures.append((future, street_name_list, city_name))
+            emitter.log.emit(city_name)  # 告诉主线程
+            try:
+                response = future.result()
+                if response.status_code == 200 and response.text.strip():
+                    data = response.json()
+
+                    # 此时这里的data 是 集合请求 有多少个街道 就有多少个520
+                    num_street = len(street_name_list)
+                    roads = set()
+
+                    street_index = 0  # 表示先处理第一个street
+                    for element in data['elements']:
+                        if element['id'] == 520:
+                            json_data[street_name_list[street_index]] = list(roads)
+                            roads = set()  # 清空
+                            street_index += 1
+                            continue  # 跳过520的元素
+
+                        if 'tags' in element and 'name:zh' in element['tags']:
+                            roads.add(element['tags']['name:zh'])
+                            if element['id'] in id_in_city:
+                                id_in_city.discard(element['id'])
+                        elif 'tags' in element and 'name' in element['tags']:
+                            roads.add(element['tags']['name'])
+                            if element['id'] in id_in_city:
+                                id_in_city.discard(element['id'])
+                else:
+                    return 0
+            except Exception as e:
+                return 0
+        except Exception as e:
+            return 0
+        json_data["roads"] = list({id_to_name[ids] for ids in id_in_city})
+        return json_data
     json_data = {}
     try:
         url = "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
