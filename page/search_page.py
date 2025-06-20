@@ -3,10 +3,12 @@ from PyQt5.QtWidgets import (
     QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QButtonGroup, QFileDialog, QTableWidgetItem, QHeaderView
 )
 from PyQt5.QtCore import Qt
-from qfluentwidgets import (PrimaryPushButton, InfoBar, InfoBarPosition, LineEdit, CheckBox, PushButton, ToolButton, 
-                            RadioButton, InfoBarIcon, TableWidget, ToolTipPosition, ToolTipFilter, IndeterminateProgressBar)
+from qfluentwidgets import (PrimaryPushButton, InfoBar, InfoBarPosition, LineEdit, CheckBox, PushButton, ToolButton, SearchLineEdit,
+                            RadioButton, InfoBarIcon, TableWidget, ToolTipPosition, ToolTipFilter, IndeterminateProgressBar, ComboBox)
 from qfluentwidgets import FluentIcon as FIT
 from pyqt5_concurrent.TaskExecutor import TaskExecutor
+from query import query_city, query_road, query_street, query_district
+import json
 class SearchPage(QWidget):
     def __init__(self):
         super().__init__()
@@ -22,22 +24,39 @@ class SearchPage(QWidget):
 
         # --- 查询类型选择 ---
         type_layout = QHBoxLayout()
-        type_label = QLabel("查询类型:")
-        type_label.setStyleSheet("font: 12pt 'Segoe UI', 'Microsoft YaHei';")
-        type_layout.addWidget(type_label)
+        # type_label = QLabel("查询类型:")
+        # type_label.setStyleSheet("font: 12pt 'Segoe UI', 'Microsoft YaHei';")
+        # type_layout.addWidget(type_label)
 
-        self.button_group = QButtonGroup(self)
-        self.button_group.setExclusive(True)
-        self.radio_buttons = []
 
-        self.tableheader = ["城市", "行政区", "街道", "道路"]
-        for text in self.tableheader:
-            rb = RadioButton(text, self)
-            rb.setStyleSheet("font: 12pt 'Segoe UI', 'Microsoft YaHei';")
-            type_layout.addWidget(rb)
-            self.button_group.addButton(rb)
-            self.radio_buttons.append(rb)
-        self.radio_buttons[0].setChecked(True)  # 默认选中第一个
+        # 城市下拉框：靠左
+        self.city_combo = ComboBox(self)
+        self.city_combo.setPlaceholderText("选择查询城市")
+        self.city_combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.city_combo.setMaxVisibleItems(8)
+        type_layout.addWidget(self.city_combo)
+
+        # 中间 spacer：弹性撑开空白
+        spacer = QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        type_layout.addItem(spacer)
+
+        # 单选按钮组：靠右排列
+        self.tableheader = ["行政", "街道", "道路"]
+        self.check_boxes = []
+        self.button_group = QButtonGroup(self)  # 创建按钮组以管理单选按钮
+        self.button_group.setExclusive(True)  # 设置为单选模式
+
+        for text in self.tableheader:  # 跳过“城市”
+            cb = CheckBox(text, self)
+            cb.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+            type_layout.addWidget(cb)
+            self.button_group.addButton(cb)  # 将复选框添加到按钮组
+            self.check_boxes.append(cb)
+            # cb.clicked.connect(lambda checked, b=cb: self.on_checkbox_clicked(b))  # 连接点击事件
+
+
+
+        self.check_boxes[-1].setChecked(True)  # 默认选中
 
         self.layout.addLayout(type_layout)
 
@@ -52,17 +71,18 @@ class SearchPage(QWidget):
         second_layout.addWidget(self.file_btn)
 
         # --- 输入框 ---
-        self.input_edit = LineEdit(self)
+        self.input_edit = SearchLineEdit(self)
         self.input_edit.setPlaceholderText("请输入查询内容")
         self.input_edit.setStyleSheet("font:12pt;")
+        self.input_edit.searchButton.clicked.connect(self.query_action)  # 输入框回车或点击搜索按钮时触发查询
         second_layout.addWidget(self.input_edit)
         self.layout.addLayout(second_layout)
 
 
         # --- 查询按钮 ---
-        self.query_btn = PrimaryPushButton("查询")
-        self.query_btn.clicked.connect(self.query_action)
-        self.layout.addWidget(self.query_btn)
+        # self.query_btn = PrimaryPushButton("查询")
+        # self.query_btn.clicked.connect(self.query_action)
+        # self.layout.addWidget(self.query_btn)
 
         # 初始化表格
         self.tableView = TableWidget(self)
@@ -70,7 +90,7 @@ class SearchPage(QWidget):
         self.tableView.setBorderRadius(8)
 
         self.tableView.setWordWrap(False)
-        self.tableView.setColumnCount(4)
+        self.tableView.setColumnCount(3)
         self.tableView.verticalHeader().hide()
         self.tableView.setHorizontalHeaderLabels(self.tableheader)
         # 不可编辑
@@ -103,20 +123,56 @@ class SearchPage(QWidget):
         file_path, _ = QFileDialog.getOpenFileName(self, "选择JSON文件", "", "JSON Files (*.json)")
         if file_path:
             self.json_path = file_path
-        else:
-            self.json_path = ""
+
+            with open(self.json_path, 'r', encoding='utf-8') as f:
+                try:
+                    data = json.load(f)
+                    if not data:    
+                        raise ValueError("文件内容为空")
+                    # 更新 ComboBox的选项
+                    self.data = data
+                    # 拿文件名字
+                    self.province = self.json_path.split('/')[-1].split('.')[0]  # 获取文件名作为省份名称
+
+                    self.city_combo.clear()
+                    city_list = list(data.keys())
+                    self.city_combo.addItems(city_list)
+                    self.city_combo.setCurrentIndex(0)  # 默认选中第一个城市
+                except ValueError as e:
+                    InfoBar.error(
+                        title='错误',
+                        content=f'选择的文件无效: {e}',
+                        orient=Qt.Horizontal,
+                        isClosable=True,
+                        position=InfoBarPosition.BOTTOM,
+                        duration=2000,
+                        parent=self
+                    )
+                    self.json_path = ""
+                    return
         self.file_btn.setToolTip(f"{self.json_path}") # 更新ToolButton的提示文本
         createInfoInfoBar(self.json_path)
 
-    def query_action(self):
-        # 获取选中的radio按钮文本
-        query_type = ""
-        for rb in self.radio_buttons:
-            if rb.isChecked():
-                query_type = rb.text()
-                break
-        query_text = self.input_edit.text()
+    def on_checkbox_clicked(self, clicked_box):
+        if clicked_box.isChecked():
+            # 取消其他所有 checkbox 的选中状态
+            for box in self.check_boxes:
+                if box is not clicked_box:
+                    box.setChecked(False)
+            
+        else:
+            # 如果点击的是自己且已选中，则取消自己，不做别的处理
+            pass
+    
 
+    def query_action(self):
+        # 获取选中的checkbox文本
+        flag = -1
+        for i, cb in enumerate(self.check_boxes):
+            if cb.isChecked():
+                flag = i
+                break
+        query_text = self.input_edit.text().strip()  # 获取输入框中的文本并去除首尾空格
         # 如果 json_info 为空，提示用户选择文件
         if not self.json_path:
             InfoBar.warning(
@@ -129,10 +185,12 @@ class SearchPage(QWidget):
                 parent=self
             )
             return
-        
+        # 拿combox
+        city_name = self.city_combo.currentText()
+        province_name = self.province  # 使用之前保存的省份名称
         # 显示进度条
         self.inProgress.start()
-        future = TaskExecutor.run(self.fors, self.json_path, query_type, query_text)  # 使用 TaskExecutor 来运行耗时任务
+        future = TaskExecutor.run(self.fors, flag, query_text, self.data, city_name, province_name)  # 使用 TaskExecutor 来运行耗时任务
         future.finished.connect(lambda e: self.updatetable(e.getExtra('result'), query_text))  # 更新表格数据
 
     def updatetable(self, data, query_text):
@@ -149,25 +207,29 @@ class SearchPage(QWidget):
 
         self.tableView.setRowCount(num)
         for i, row in enumerate(data):
-            for j in range(4):
-                table_item = QTableWidgetItem(row[j])
+            for j in range(3):
+                
+                table_item = QTableWidgetItem(row[j + 1] if row[j + 1] is not None else "\\")
                 table_item.setTextAlignment(Qt.AlignCenter)
                 self.tableView.setItem(i, j, table_item)
         self.tableView.resizeColumnsToContents()
-        self.tableView.horizontalHeader().setStretchLastSection(True)  # 最后一列拉伸填满剩余空间
+        # self.tableView.horizontalHeader().setStretchLastSection(True)  # 最后一列拉伸填满剩余空间
         self.tableView.setHorizontalHeaderLabels(self.tableheader)
 
         self.inProgress.stop()
 
-    def fors(self, json_path, query_type, query_text):
+    def fors(self, flag, text, data, city, province):
         # 模拟一个耗时任务
-        import time
-        time.sleep(2)
-        # 这里可以添加实际的查询逻辑
-        # 返回查询结果
-        songInfos = [
-        ]
-        return songInfos
+
+
+        if flag == -1:
+            return query_city(city, province, data[city])
+        elif flag == 0:
+            return query_district(text, city, province, data[city])
+        elif flag == 1:
+            return query_street(text, city, province, data[city])
+        elif flag == 2:
+            return query_road(text, city, province, data[city])
     
     def createInfoBar(self, num, query_text):
         if num > 0:
@@ -176,8 +238,8 @@ class SearchPage(QWidget):
                 content=f"🎉 共有 {num} 条与“{query_text}”有关的道路信息！",
                 orient=Qt.Horizontal,
                 isClosable=True,
-                position=InfoBarPosition.BOTTOM,
-                duration=2000,
+                position=InfoBarPosition.TOP,
+                duration=3000,
                 parent=self,
             )
         else:

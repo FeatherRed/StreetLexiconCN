@@ -5,7 +5,7 @@ from opencc import OpenCC
 def query_road(road_name, city_name, province_name, data):#返回一个list，格式为:[(所在地级市，所在区，所在街道，道路名称)]，选择道路按钮时调用
     results = []
     cc = OpenCC('t2s')
-    city_name = cc.convert(city_name)
+    road_name = cc.convert(road_name)
     if province_name == "台湾省":
         for road in data["roads"]:
             if road_name in cc.convert(road):

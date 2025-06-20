@@ -118,8 +118,8 @@ class CreatePage(QWidget):
         self.textBrowser.setMarkdown(f"## 正在生成 {city} 地址路名数据\n")
 
         # 模拟生成过程
-        future = TaskExecutor.run(lambda : self.fors(id, city, province, self.emitter))  # 使用 TaskExecutor 来运行耗时任务
-        future.finished.connect(lambda: self.save_json(future.getExtra('result'), city))
+        future = TaskExecutor.run(lambda : self.fors(id, city, province,self.emitter))  # 使用 TaskExecutor 来运行耗时任务
+        future.finished.connect(lambda: self.save_json(future.getExtra('result'), province, city))
         # future.finished.connect(lambda e: self.createInfoBar(city, str(e)))
         # future.failed.connect(lambda e: self.createErrorInfoBar(city, str(e)))
 
@@ -128,7 +128,7 @@ class CreatePage(QWidget):
         result = create_database(id, city, province, emitter)
         return result
 
-    def save_json(self, result, city):
+    def save_json(self, result, province, city):
         def successbar(city):
             InfoBar.success(
                 title = '生成完成',
@@ -158,14 +158,17 @@ class CreatePage(QWidget):
             os.makedirs("output")
 
         # 保存
-        if os.path.exists(f"output/{city}.json"):
-            with open(f"output/{city}.json", 'r', encoding='utf-8') as f:
+        if os.path.exists(f"output/{province}.json"):
+            with open(f"output/{province}.json", 'r', encoding='utf-8') as f:
                 existing_data = json.load(f)
+            if city not in existing_data:
+                existing_data[city] = {}
         else:
             existing_data = {}
+            existing_data[city] = {}
         # 合并数据
-        existing_data.update(result)
-        with open(f"output/{city}.json", 'w', encoding='utf-8') as f:
+        existing_data[city].update(result)
+        with open(f"output/{province}.json", 'w', encoding='utf-8') as f:
             json.dump(existing_data, f, ensure_ascii=False, indent=4)
         self.inProgress.stop()
 

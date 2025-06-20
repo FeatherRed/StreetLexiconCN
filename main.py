@@ -32,7 +32,7 @@ class Window(FramelessWindow):
     def __init__(self):
         super().__init__()
         self.setTitleBar(StandardTitleBar(self))
-        self.resize(500, 500)
+        self.resize(600, 600)
         self.setWindowIcon(QIcon('resource/logo.png'))
         self.setWindowTitle('城市地址路名库生成器')
 
