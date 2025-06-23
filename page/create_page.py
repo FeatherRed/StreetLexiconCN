@@ -135,7 +135,7 @@ class CreatePage(QWidget):
     def fors(self, id, city, province, emitter, save_emitter = None):
         result = create_database(id, city, province, emitter)
 
-        if save_emitter:
+        if save_emitter is not None:
             save_emitter.log.emit(result, province, city)  # 发送保存数据的信号
 
         return result
@@ -161,7 +161,7 @@ class CreatePage(QWidget):
                 duration = 3000,  # won't disappear automatically
                 parent = self
             )
-        if result == 0:
+        if result == 0 or result is None:
             errorbar(city)
             self.inProgress.stop()
             return
