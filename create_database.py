@@ -63,7 +63,7 @@ def split_data_city(data):
 
     return next_level, ways, id_to_name, id_in_level
 
-def split_data_district(data, id_in_city):
+def split_data_district(data, id_in_city, id_to_name):
     # 对区域数据划分
     next_level_name = []
     next_level_id = []
@@ -83,21 +83,24 @@ def split_data_district(data, id_in_city):
     id_in_level = set()
     for element in data['elements'][flag:]:
         if "tags" in element and "name:zh" in element['tags']:
+            id_to_name[element['id']] = element['tags']['name:zh']
             if element['id'] in id_in_city:
                 id_in_city.discard(element['id'])
             id_in_level.add(element['id'])
         elif "tags" in element and "name" in element['tags']:
+            id_to_name[element['id']] = element['tags']['name']
             if element['id'] in id_in_city:
                 id_in_city.discard(element['id'])
             id_in_level.add(element['id'])
 
-    return next_level_name, next_level_id, id_in_level
+    return next_level_name, next_level_id, id_in_level, id_to_name
 
 def create_database(city_id, city_name, province_name, emitter):
     if province_name == "台湾省":
         json_data = {}
         try:
             url = "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+            #url = "https://overpass.private.coffee/api/interpreter"
             query = gen_district_query(city_id)
             response = requests.get(url, params={'data': query})
             data = response.json()
@@ -154,6 +157,7 @@ def create_database(city_id, city_name, province_name, emitter):
     json_data = {}
     try:
         url = "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+        #url = "https://overpass.private.coffee/api/interpreter"
         # 拿到该城市的行政区数据
         query = gen_city_query(city_id)
         response = requests.get(url, params={'data': query})
@@ -179,7 +183,7 @@ def create_database(city_id, city_name, province_name, emitter):
             if data is None:
                 print("No data found for district:", district)
                 return 0
-            street_name_list, street_id_list, id_in_street = split_data_district(data, id_in_city)
+            street_name_list, street_id_list, id_in_street, id_to_name = split_data_district(data, id_in_city, id_to_name)
 
             road_in_district[district] = id_in_street
 
@@ -212,10 +216,12 @@ def create_database(city_id, city_name, province_name, emitter):
                             continue  # 跳过520的元素
 
                         if 'tags' in element and 'name:zh' in element['tags']:
+                            id_to_name[element['id']] = element['tags']['name:zh']
                             roads.add(element['tags']['name:zh'])
                             if element['id'] in road_in_district[district]:
                                 road_in_district[district].discard(element['id'])
                         elif 'tags' in element and 'name' in element['tags']:
+                            id_to_name[element['id']] = element['tags']['name']
                             roads.add(element['tags']['name'])
                             if element['id'] in road_in_district[district]:
                                 road_in_district[district].discard(element['id'])
@@ -226,7 +232,7 @@ def create_database(city_id, city_name, province_name, emitter):
                 return 0
 
     except Exception as e:
-        print('Error in processing district:', district, e)
+        #print('Error in processing district:', district, e)
         return 0
     
     # 最后处理剩余的道路
