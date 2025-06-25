@@ -11,7 +11,7 @@ from qfluentwidgets import ComboBox, PrimaryPushButton, IndeterminateProgressBar
 from pyqt5_concurrent.TaskExecutor import TaskExecutor
 import time
 
-from create_database import create_database  # 假设 create_database.py 在同一目录下
+from page.create import create_database  # 假设 create.py 在同一目录下
 
 import platform
 
@@ -58,13 +58,6 @@ class CreatePage(QWidget):
 
         # --- 生成按钮 ---
         self.generate_btn = PrimaryPushButton("生成 北京市 地址路名数据")
-        # self.generate_btn.setStyleSheet("""
-        #     font:12pt;
-        #     background:#1890ff;
-        #     color:white;
-        #     border-radius:5px;
-        #     height:36px;
-        # """)
         self.generate_btn.clicked.connect(self.generate_database)
         self.layout.addWidget(self.generate_btn)
 

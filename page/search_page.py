@@ -7,7 +7,7 @@ from qfluentwidgets import (PrimaryPushButton, InfoBar, InfoBarPosition, LineEdi
                             RadioButton, InfoBarIcon, TableWidget, ToolTipPosition, ToolTipFilter, IndeterminateProgressBar, ComboBox)
 from qfluentwidgets import FluentIcon as FIT
 from pyqt5_concurrent.TaskExecutor import TaskExecutor
-from query import query_city, query_road, query_street, query_district
+from page.query import query_city, query_road, query_street, query_district
 
 import platform
 
