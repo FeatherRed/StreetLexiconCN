@@ -1,12 +1,14 @@
 import json
 from opencc import OpenCC
 
+policy_city = ['东莞市', '中山市', '儋州市', '嘉峪关市', '新疆生产建设兵团', '新北市', '嘉義市', '連江縣', '南投縣', '澎湖縣', '臺東縣', '桃園市', '苗栗縣', '高雄市', '嘉義縣', '臺北市', '屏東縣', '臺南市', '金門縣', '雲林縣', '基隆市', '彰化縣', '新竹市', '宜蘭縣', '花蓮縣', '臺中市', '新竹縣', '氹仔', '路環']
+
 
 def query_road(road_name, city_name, province_name, data):#返回一个list，格式为:[(所在地级市，所在区，所在街道，道路名称)]，选择道路按钮时调用
     results = []
     cc = OpenCC('t2s')
     road_name = cc.convert(road_name)
-    if province_name == "台湾省":
+    if city_name in policy_city:
         for road in data["roads"]:
             if road_name in cc.convert(road):
                 results.append((city_name, None, None, road))
@@ -36,7 +38,7 @@ def query_street(street_name, city_name, province_name, data):#返回一个list�
     results = []
     cc = OpenCC('t2s')
     street_name = cc.convert(street_name)
-    if province_name == "台湾省":
+    if city_name in policy_city:
         for street in data:
             if street != "roads" and street_name in cc.convert(street):
                 for road in data[street]:
@@ -56,7 +58,7 @@ def query_district(district_name, city_name, province_name, data):#返回一个l
     results = []
     cc = OpenCC('t2s')
     district_name = cc.convert(district_name)
-    if province_name == "台湾省":
+    if city_name in policy_city:
         return results
     for district in data:
         if district != "roads":
@@ -71,7 +73,7 @@ def query_district(district_name, city_name, province_name, data):#返回一个l
 
 def query_city(city_name, province_name, data):#返回一个list，格式为:[(所在地级市,所在区，所在街道，道路名称)]，未选择按钮时调用
     results = []
-    if province_name == "台湾省":
+    if city_name in policy_city:
         for road in data["roads"]:
             results.append((city_name, None, None, road))
         for street in data:

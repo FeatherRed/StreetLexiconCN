@@ -6,6 +6,8 @@ import os
 import time
 
 base_id = 3600000000
+policy_city = ['东莞市', '中山市', '儋州市', '嘉峪关市', '新疆生产建设兵团', '新北市', '嘉義市', '連江縣', '南投縣', '澎湖縣', '臺東縣', '桃園市', '苗栗縣', '高雄市', '嘉義縣', '臺北市', '屏東縣', '臺南市', '金門縣', '雲林縣', '基隆市', '彰化縣', '新竹市', '宜蘭縣', '花蓮縣', '臺中市', '新竹縣', '氹仔', '路環']
+
 
 def gen_road_query(id_list):
     # 多少个id 就补多少个520
@@ -96,7 +98,7 @@ def split_data_district(data, id_in_city, id_to_name):
     return next_level_name, next_level_id, id_in_level, id_to_name
 
 def create_database(city_id, city_name, province_name, emitter):
-    if province_name == "台湾省":
+    if city_name in policy_city:
         json_data = {}
         try:
             url = "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
@@ -244,12 +246,26 @@ def create_database(city_id, city_name, province_name, emitter):
 
 if __name__ == "__main__":
     # 示例调用
-    with open("china_admin_data.json", 'r', encoding='utf-8') as f1:
+    ans = []
+    with open("../china_admin_data.json", 'r', encoding='utf-8') as f1:
         cities = json.load(f1)
-    province = "广东省"
-    for city_name in cities["id"][province]:
-        start_time = time.time()
-        if city_name == "汕尾市":
-            create_database(cities["id"][province][city_name], city_name, "data/"+city_name+".json")
-        end_time = time.time()
-        print(f"{city_name}数据创建完成，耗时: {end_time - start_time:.2f}秒")
+    for province in cities["id"]:
+        for city_name in cities["id"][province]:
+            start_time = time.time()
+            url = "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+            query = f"""
+            [out:json];
+            area({cities["id"][province][city_name]+base_id})->.searchArea;
+            (
+              relation(area.searchArea)["boundary"="administrative"]["admin_level"="6"];
+            );
+            out tags;
+            """
+            response = requests.get(url, params={'data': query})
+            data = response.json()
+            if data["elements"] == []:
+                print(city_name)
+                ans.append(city_name)
+            end_time = time.time()
+            #print(f"{city_name}数据创建完成，耗时: {end_time - start_time:.2f}秒")
+    print(ans)
