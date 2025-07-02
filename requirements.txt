@@ -1,0 +1,4 @@
+pyqt5-concurrent==0.1.6
+pyqt-fluent-widgets==1.8.1
+requests==2.32.3
+json
